@@ -1,0 +1,28 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# file formats
+*.html
+*.xml
+*.transcript
+*.taz
+*.zip
+*.eaf
+*.csv
+*.tar
+*.bz2
+*.Rproj
+*.dtd
+*.sql
+*.gz
+*.json
+
+# particular folders
+deu/GermaParlTEI-master/*
+deu/MdB-Stammdaten-data/*
+fin/Eduskunta/*
+
+
+
