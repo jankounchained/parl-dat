@@ -168,3 +168,30 @@ get_to_html_trans <- function(index_link) {
 }
 
 trans_links <- map_df(session_links_clean$url_value, get_to_html_trans)
+
+trans_links_clean <- trans_links %>%
+  mutate(trans_url = str_remove(trans_url, "#.*"))
+
+###
+### download raw html
+###
+
+for (myurl in trans_links_clean$trans_url) {
+  
+  filename <- paste0(
+    # folder path
+    "fra/scraped2/", 
+    # remove punctutaion from the next part of the filename
+    str_replace_all(
+      # collect everything between .fr/ and .asp
+      str_extract(myurl, "(?<=\\.fr\\/).*(?=\\.asp)"),
+      # replace / or - with _
+      "/|-", "_"
+    ),
+    # file format
+    ".html"
+    )
+  
+  download(myurl, filename)
+  Sys.sleep(2)
+}
