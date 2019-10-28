@@ -237,3 +237,5 @@ ls_XXV = list.files(path = "aut/scraped/", pattern = "XXV_", full.names = T)
 
 df_XXV = map_df(ls_XXV, e_legXXII_B)
 prep_tester(df_XXV)
+
+write_csv(df_XXV, "aut/data/02_df_XXV.csv")
