@@ -6,6 +6,30 @@ library(future.apply)
 
 
 ######
+###### helper functions
+######
+
+index_tester <- function(clean_data) {
+  
+  a = clean_data %>%
+    select(ind_speech) %>%
+    # dummy variables for testing. Hopefully, they should have the same result
+    # if NA not detected = 0
+    mutate(date_fail_dummy = ifelse(str_detect(ind_speech, "NA"), 1, 0),
+           # if x digits "_" x digits detected = 0
+           index_fail_dummy = ifelse(str_detect(ind_speech, "\\d+_\\d+"), 0, 1))
+  
+  return(a %>%
+           summarise(date_fail = sum(date_fail_dummy),
+                     index_fail = sum(index_fail_dummy),
+                     nrow = n()))
+  
+  
+  
+}
+
+
+######
 ###### PART 1: parsing 11/1998 - 11/2001
 ######
 
@@ -169,7 +193,7 @@ fra_raw_11_A = map_df(ls_11[1:420], parsing_in_the_90s)
 fra_raw_11_B = map_df(ls_11[422:906], parsing_in_the_90s)
 
 fra_raw_11 = bind_rows(fra_raw_11_A, fra_raw_11_B)
-write_csv(fra_raw_11, "data/02_fra_raw_11.csv")
+write_csv(fra_raw_11, "fra/data/02_fra_raw_11.csv")
 
 
 ######
@@ -348,11 +372,29 @@ fra_raw_12_3 = map_df(ls_12[471:1376], parsing_in_the_00s)
 
 
 fra_raw_12 <- bind_rows(fra_raw_12_1, fra_raw_12_2, fra_raw_12_3)
-write_csv(fra_raw_12, "data/02_fra_raw_12.csv")
+write_csv(fra_raw_12, "fra/data/02_fra_raw_12.csv")
 
 
-fra_raw_13 = map_df(ls_13, parsing_in_the_00s)
-write_csv(fra_raw_13, "data/02_fra_raw_13.csv")
+fra_raw_13_1 = map_df(ls_13[1:276], parsing_in_the_00s)
+index_tester(fra_raw_13_1)
+
+# 13/277 - 13/299: wierd pit of doom with NA index
+
+fra_raw_13_2 = map_df(ls_13[280:520], parsing_in_the_10s_A)
+index_tester(fra_raw_13_2)
+
+# 13/521 encoding error
+
+fra_raw_13_3 = map_df(ls_13[522:541], parsing_in_the_10s_A)
+index_tester(fra_raw_13_3)
+
+# 13/542 nrow < 0
+
+fra_raw_13_4 = map_df(ls_13[543:911], parsing_in_the_10s_B)
+index_tester(fra_raw_13_4)
+
+fra_raw_13 <- bind_rows(fra_raw_13_1, fra_raw_13_2, fra_raw_13_3, fra_raw_13_4)
+write_csv(fra_raw_13, "fra/data/02_fra_raw_13.csv")
 
 
 ######
@@ -700,4 +742,4 @@ ls_14 = list.files(path = "fra/scraped2/", pattern = "14_", full.names = T)
 fra_raw_14_B = map_df(ls_14[307:1358], parsing_in_the_10s_B)
 
 fra_raw_14 = bind_rows(fra_raw_14_A_1, fra_raw_14_A_2, fra_raw_14_A_3, fra_raw_14_B)
-write_csv(fra_raw_14, "data/02_fra_raw_14.csv")
+write_csv(fra_raw_14, "fra/data/02_fra_raw_14.csv")
