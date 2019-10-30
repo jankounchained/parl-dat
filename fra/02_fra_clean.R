@@ -380,21 +380,7 @@ index_tester(fra_raw_13_1)
 
 # 13/277 - 13/299: wierd pit of doom with NA index
 
-fra_raw_13_2 = map_df(ls_13[280:520], parsing_in_the_10s_A)
-index_tester(fra_raw_13_2)
-
-# 13/521 encoding error
-
-fra_raw_13_3 = map_df(ls_13[522:541], parsing_in_the_10s_A)
-index_tester(fra_raw_13_3)
-
-# 13/542 nrow < 0
-
-fra_raw_13_4 = map_df(ls_13[543:911], parsing_in_the_10s_B)
-index_tester(fra_raw_13_4)
-
-fra_raw_13 <- bind_rows(fra_raw_13_1, fra_raw_13_2, fra_raw_13_3, fra_raw_13_4)
-write_csv(fra_raw_13, "fra/data/02_fra_raw_13.csv")
+### THE REST OF 13 IS LATER, AS IT USES PARSING_IN_THE_10S
 
 
 ######
@@ -562,6 +548,16 @@ ls_14 = list.files(path = "fra/scraped2/", pattern = "14_", full.names = T)
 ### run parsing_in_the_10s
 ###
 
+### 13
+fra_raw_13_2 = map_df(ls_13[280:520], parsing_in_the_10s_A)
+index_tester(fra_raw_13_2)
+
+# 13/521 encoding error
+
+fra_raw_13_3 = map_df(ls_13[522:541], parsing_in_the_10s_A)
+index_tester(fra_raw_13_3)
+
+### 14
 fra_raw_14_A_1 = map_df(ls_14[1:274], parsing_in_the_10s_A)
 # 14/275: encoding error
 fra_raw_14_A_2 = map_df(ls_14[276:295], parsing_in_the_10s_A)
@@ -739,6 +735,17 @@ ls_14 = list.files(path = "fra/scraped2/", pattern = "14_", full.names = T)
 ### run parsing_in_the_10s_B
 ###
 
+### 13 
+# 13/542 nrow < 0
+
+fra_raw_13_4 = map_df(ls_13[543:911], parsing_in_the_10s_B)
+index_tester(fra_raw_13_4)
+
+fra_raw_13 <- bind_rows(fra_raw_13_1, fra_raw_13_2, fra_raw_13_3, fra_raw_13_4)
+write_csv(fra_raw_13, "fra/data/02_fra_raw_13.csv")
+
+
+### 14
 fra_raw_14_B = map_df(ls_14[307:1358], parsing_in_the_10s_B)
 
 fra_raw_14 = bind_rows(fra_raw_14_A_1, fra_raw_14_A_2, fra_raw_14_A_3, fra_raw_14_B)
