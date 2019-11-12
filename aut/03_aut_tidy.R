@@ -1,5 +1,9 @@
 library(tidyverse)
 
+aut_02_paths = list.files(path = "aut/data/raw", pattern = "*.csv", full.names = T)
+
+
+
 ###
 ### XV
 ###

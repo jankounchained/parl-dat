@@ -86,10 +86,11 @@ ls_XXI = list.files(path = "aut/scraped/", pattern = "XXI_", full.names = T)
 
 df_XX = map_df(ls_XX, e_legXX)
 prep_tester(df_XX)
+write_csv(df_XX, "aut/data/raw/02_df_XX.csv")
 
 df_XXI = map_df(ls_XXI, e_legXX)
 prep_tester(df_XXI)
-
+write_csv(df_XXI, "aut/data/raw/02_df_XXI.csv")
 
 
 ###
@@ -205,7 +206,8 @@ df_XXIIb = map_df(ls_XXII[18:164], e_legXXII_B)
 prep_tester(df_XXIIa)
 prep_tester(df_XXIIb)
 
-
+df_XII = full_join(df_XXIIa, df_XXIIb)
+write_csv(df_XII, "aut/data/raw/02_df_XXII.csv")
 
 
 ###
@@ -216,6 +218,8 @@ ls_XXIII = list.files(path = "aut/scraped/", pattern = "XXIII_", full.names = T)
 
 df_XXIII = map_df(ls_XXIII, e_legXXII_B)
 prep_tester(df_XXIII)
+
+write_csv(df_XXIII, "aut/data/raw/02_df_XXIII.csv")
 
 
 
@@ -228,6 +232,8 @@ ls_XXIV = list.files(path = "aut/scraped/", pattern = "XXIV_", full.names = T)
 df_XXIV = map_df(ls_XXIV, e_legXXII_B)
 prep_tester(df_XXIV)
 
+write_csv(df_XXIV, "aut/data/raw/02_df_df_XXIV.csv")
+
 
 ###
 ### leg XXV
@@ -238,4 +244,4 @@ ls_XXV = list.files(path = "aut/scraped/", pattern = "XXV_", full.names = T)
 df_XXV = map_df(ls_XXV, e_legXXII_B)
 prep_tester(df_XXV)
 
-write_csv(df_XXV, "aut/data/02_df_XXV.csv")
+write_csv(df_XXV, "aut/data/raw/02_df_XXV.csv")
