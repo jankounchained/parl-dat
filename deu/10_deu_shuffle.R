@@ -1,14 +1,36 @@
-# calculate NTR scores for France
+# calculate shuffeled NTR scores for Germany
 
 library(tidyverse)
 library(entropy)
 library(future.apply)
 
 
+######
+###### SHUFFLE LDA OUTPUT
+######
+
+# read LDA output
+deu_lda = read_csv("deu/data/deu_ntr_in.csv")
+
+# set seed for reproducibility
+set.seed(42)
+
+# shuffle rows
+random_rows <- sample(nrow(deu_lda))
+shuffled_speeches <- deu_lda[random_rows, ]
+
+write_csv(shuffled_speeches, "deu/data/shuffled_speeches.csv")
+
+# restart R
+rm(list = ls())
+.rs.restartR()
 
 ######
 ###### NTR
 ######
+
+# country for loading / saving files
+iso = "deu"
 
 vdiff <- function(x,n,fun) sapply(n, function(i) fun(x,i))
 vlag  <- function(x,n) vdiff(x,0:n,dplyr::lag)
@@ -42,9 +64,9 @@ transience <- function(mat, w) {
 
 z <- function(d) (d - mean(d)) / sd(d)
 
-calculate_ntr <- function(doc_subset_path, w) {
+calculate_ntr <- function(w) {
   
-  import = read_csv(doc_subset_path)
+  import = read_csv("deu/data/shuffled_speeches.csv")
   
   id = import$doc_id
   
@@ -68,7 +90,7 @@ calculate_ntr <- function(doc_subset_path, w) {
   ntr_output$delta_R = ntr_output$z_resonance - predict(res_nov_model)
   
   ntr_output %>%
-    write_csv(paste0("deu/data/ntr_out/W", as.character(w), "_", "_from_matrix.csv"))
+    write_csv(paste0(iso, "/data/ntr_shuffled/W", as.character(w), "_ntr_shuf.csv"))
   
 }
 
@@ -77,11 +99,8 @@ calculate_ntr <- function(doc_subset_path, w) {
 # run
 ####
 
-timescales <- seq(1, 100, 1)
+timescales <- seq(1, 100, 5)
 
 plan(multiprocess)
 future_lapply(timescales, FUN = calculate_ntr, 
-              doc_subset_path = "deu/data/deu_ntr_in.csv",
               future.packages = c("tidyverse", "entropy"))
-
-#calculate_ntr("fra/data/fra_ntr_in.csv", w = 1)
