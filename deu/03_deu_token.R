@@ -15,7 +15,7 @@ lemma = read_csv("deu/data/02_deu_s.csv") %>%
   groupdata2::group(120)
 
 lemma %>%
-  select(rowname, text_c, .groups) %>%
+  select(rowname, text, .groups) %>%
   split(.$.groups) %>%
   walk(~(write_csv(., str_c("deu/data/to_udpipe/", unique(.$.groups), "_deu.csv"))))
 
@@ -29,7 +29,7 @@ lemmatize <- function(filename) {
   part <- read_csv(paste0("deu/data/to_udpipe/", filename))
   
   ud_model <- udpipe_load_model("deu/data/german-gsd-ud-2.4-190531.udpipe")
-  x <- udpipe_annotate(ud_model, x = part$text_c, doc_id = part$rowname)
+  x <- udpipe_annotate(ud_model, x = part$text, doc_id = part$rowname)
   
   x <- as_tibble(x) %>%
     select(doc_id, token, lemma) 
