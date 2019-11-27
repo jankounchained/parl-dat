@@ -1,0 +1,108 @@
+---
+title: "11_deu_explore"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(scales)
+library(ggunchained)
+library(lmerTest)
+library(cowplot)
+```
+
+```{r}
+ntr_paths = list.files("deu/data/ntr_out", pattern = "*.csv", full.names = T)
+shuff_ntr_paths = list.files("fra/data/ntr_shuffled/", pattern = "*.csv", full.names = T)
+
+norm41 = read_csv(ntr_paths[8])
+shuff41 = read_csv(shuff_ntr_paths[8])
+```
+
+```{r}
+distribution_plots <- function(w, iso) {
+  
+  ### filepaths
+  ord_subpath = list.files(paste0(iso, "/data/ntr_out"), 
+                           pattern = paste0("W", w, "_"), full.names = T)
+  
+  shu_subpath = list.files(paste0(iso, "/data/ntr_shuffled"), 
+                           pattern = paste0("W", w, "_"), full.names = T)
+  
+  norm = read_csv(ord_subpath)
+  shuff = read_csv(shu_subpath)
+  
+  
+  ### MAKE PLOTS
+  # ORDERED
+  ord_N = ggplot(norm, aes(z_novelty)) +
+    geom_density() +
+    theme_classic() +
+    labs(title = "Ordered Novelty")
+  
+  ord_T = ggplot(norm, aes(z_transience)) +
+    geom_density() +
+    theme_classic() +
+    labs(title = "Ordered Transience")
+  
+  ord_R = ggplot(norm, aes(z_resonance)) +
+    geom_density() +
+    theme_classic() +
+    labs(title = "Ordered Resonance")
+  
+  # SHUFFLED
+  shu_N = ggplot(shuff, aes(z_novelty)) +
+    geom_density() +
+    theme_classic() +
+    labs(title = "Shuffled Novelty")
+  
+  shu_T = ggplot(shuff, aes(z_transience)) +
+    geom_density() +
+    theme_classic() +
+    labs(title = "Shuffled Transience")
+  
+  shu_R = ggplot(shuff, aes(z_resonance)) +
+    geom_density() +
+    theme_classic() +
+    labs(title = "Shuffled Resonance")
+  
+  
+  ### ARRANGE PLOTS INTO GRID
+  plot_row = plot_grid(ord_N, shu_N, ord_T, shu_T, ord_R, shu_R,
+                       nrow = 3,
+                       ncol = 2)
+  
+  title <- ggdraw() + 
+    draw_label(
+      paste0("[", toupper(iso), "] ", "w = ", w),
+      fontface = 'bold',
+      x = 0,
+      hjust = 0
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 7)
+    )
+  
+  final = plot_grid(
+    title, plot_row,
+    ncol = 1,
+    # rel_heights values control vertical title margins
+    rel_heights = c(0.1, 1)
+  )
+  
+  cowplot::ggsave2(plot = final, 
+                   filename = paste0(iso, "/data/plots/dens/", w, "_dens.png"))
+  
+}
+
+w_range = as.character(seq(1, 100, 5))
+
+lapply(w_range,
+       distribution_plots,
+       iso = "deu")
+```
+
