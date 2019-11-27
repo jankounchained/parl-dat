@@ -77,7 +77,7 @@ calculate_ntr <- function(doc_subset_path, w) {
 # run
 ####
 
-timescales <- seq(1, 100, 1)
+timescales <- seq(1, 100, 5)
 
 plan(multiprocess)
 future_lapply(timescales, FUN = calculate_ntr, 

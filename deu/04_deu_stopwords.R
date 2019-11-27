@@ -83,7 +83,7 @@ unn_hash <- from_ud %>%
   # remove digits
   filter(!str_detect(word, "\\d+")) %>%
   # keep hashes and ID
-  select(rowname, word) 
+  select(rowname, word)
 
 write_csv(unn, "deu/data/unn.csv")
 write_csv(unn_hash, "deu/data/unn_hash.csv")
