@@ -26,3 +26,16 @@ fin/Eduskunta/*
 
 
 
+*.txt
+*.xls
+*.doc
+*.xlsx
+*.lnk
+*.ods
+*.docx
+*.rdf
+*.vw
+*.udpipe
+*.model
+*.cache
+*.png
