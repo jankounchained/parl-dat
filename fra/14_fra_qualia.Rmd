@@ -1,0 +1,49 @@
+---
+title: "14_fra_qalia"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(scales)
+library(groupdata2)
+
+ntr_paths = list.files("fra/data/ntr_out/", pattern = "*.csv", full.names = T)
+shuff_ntr_paths = list.files("fra/data/ntr_shuffled/", pattern = "*.csv", full.names = T)
+```
+
+```{r}
+fra_ref = read_csv("fra/data/03_fra_ref.csv")
+
+fra_role = fra_ref %>%
+  mutate(role = case_when(str_detect(name, "Ministre|ministre") ~ "minister",
+                          str_detect(name, "Président|président") ~ "president",
+                          str_detect(name, "Rapporteur") ~ "committee",
+                          TRUE ~ "NA"))
+
+table(fra_role$role)
+```
+
+```{r}
+norm41 = read_csv(ntr_paths[str_detect(ntr_paths, "41")]) %>%
+  rename(rowname = doc_id)
+
+shuff41 = read_csv(shuff_ntr_paths[str_detect(shuff_ntr_paths, "41")]) %>%
+  rename(rowname = doc_id)
+
+# join
+F_41 = left_join(norm41, fra_role, by = "rowname")
+F_41S = left_join(shuff41, fra_role, by = "rowname")
+```
+
+```{r}
+F_41 %>%
+  filter(role != "NA") %>%
+  ggplot(aes(z_novelty, z_transience, fill = role)) +
+  geom_bin2d(bins = 100) +
+  facet_wrap(~role) +
+  coord_fixed()
+```
+

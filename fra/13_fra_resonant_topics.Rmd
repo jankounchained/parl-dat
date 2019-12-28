@@ -1,0 +1,175 @@
+---
+title: "13_fra_resonant_topics"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(rethinking)
+library(scales)
+library(ggwordcloud)
+library(Hmisc)
+
+ntr_paths = list.files("fra/data/ntr_out", pattern = "*.csv", full.names = T)
+shuff_ntr_paths = list.files("fra/data/ntr_shuffled/", pattern = "*.csv", full.names = T)
+```
+
+
+```{r}
+F41_score = read_csv(ntr_paths[str_detect(ntr_paths, "41")]) 
+
+F_LDA = read_csv("fra/data/fra_ntr_in.csv") %>%
+  gather(key = "topic",
+         value = "prob",
+         X1:X100) %>%
+  mutate(topic_nr = str_extract(topic, "\\d+"))
+
+dens(F41_score$z_resonance)
+```
+
+# subset of highly resonant speeches
+```{r}
+HPDI(F41_score$z_resonance, prob = 0.9)
+
+F41_hr = F41_score %>%
+  filter(z_resonance >= 1.741582)
+
+F41_lr = F41_score %>%
+  filter(z_resonance <= -3)
+
+F_q_high = left_join(F41_hr, F_LDA, by = "doc_id")
+F_q_low = left_join(F41_lr, F_LDA, by = "doc_id")
+```
+
+Top topic probs are many at high, but more random than Germnay
+Bottom topic probs are much more often not 0 than Germany
+```{r}
+F_q_high %>%
+  ggplot(aes(as.numeric(topic_nr), prob)) +
+  geom_bar(stat = "summary") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1)) +
+  theme_janco_bar() +
+  labs(title = "Average topic composition",
+       subtitle = "speeches in the top decile of Resonance",
+       x = "LDA topic number",
+       y = "probability")
+
+ggsave("fra/data/plots/topics/top_resonance.png")
+
+F_q_low %>%
+  ggplot(aes(as.numeric(topic_nr), prob)) +
+  geom_bar(stat = "summary") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1)) +
+  theme_janco_bar() +
+  labs(title = "Average topic composition",
+       subtitle = "speeches in the bottom decile of Resonance",
+       x = "LDA topic number",
+       y = "probability")
+
+ggsave("fra/data/plots/topics/bottom_resonance.png")
+```
+
+# What are those topics?
+```{r}
+topic_F = read_delim("fra/data/word_topic.model", delim = " ",
+                   col_names = F, skip = 11,
+                   col_types = cols()) %>%
+  rename(hash = X1)
+
+hash = read_csv("fra/data/fra_hash.csv")
+
+thr <- right_join(topic_F, hash, by = "hash")
+
+extract_topic_words <- function(column) {
+  
+  d <- thr %>%
+    select(prob = column, word) %>%
+    arrange(desc(prob)) %>%
+    head(10) %>%
+    mutate(topic = str_extract(column, "\\d+"),
+           topic = as.numeric(topic)) %>%
+    select(topic, word, prob)
+  
+  return(d)
+  
+}
+
+col <- enframe(colnames(thr)) %>%
+  filter(str_detect(value, "\\d+"))
+
+col <- col$value
+
+topic_words <- map_df(col, extract_topic_words)
+
+write_csv(topic_words, "fra/data/words_by_topic.csv")
+```
+
+# topic composition
+```{r}
+topic_words = read_csv("fra/data/words_by_topic.csv")
+
+save_topic_wordclouds <- function(topic_number) {
+  
+  set.seed(420)
+  
+  topic_words %>%
+  filter(topic == as.character(topic_number)) %>%
+  ggplot(aes(label = word, size = prob / 2, color = factor(word))) +
+  geom_text_wordcloud() +
+  scale_size_area(max_size = 20) +
+  theme_minimal()
+  
+  ggsave(filename = paste0("T", topic_number, ".png"), path = "fra/data/plots/topics/")
+  
+}
+
+topic_nrs = seq(1, 100, 1)
+lapply(topic_nrs, save_topic_wordclouds)
+```
+
+
+# shuff
+```{r}
+F41_shuff = read_csv(shuff_ntr_paths[str_detect(shuff_ntr_paths, "41")]) 
+
+HPDI(F41_shuff$z_resonance, prob = 0.9)
+
+SF41_hr = F41_shuff %>%
+  filter(z_resonance >= 1.672955)
+
+SF41_lr = F41_shuff %>%
+  filter(z_resonance <= -1.448609)
+
+SF_q_high = left_join(SF41_hr, F_LDA, by = "doc_id")
+SF_q_low = left_join(SF41_lr, F_LDA, by = "doc_id")
+
+```
+
+```{r}
+SF_q_high %>%
+  ggplot(aes(as.numeric(topic_nr), prob)) +
+  geom_bar(stat = "summary") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1)) +
+  theme_janco_bar() +
+  labs(title = "Average topic composition - shuffled",
+       subtitle = "shuffled speeches in the top decile of Resonance",
+       x = "LDA topic number",
+       y = "probability")
+
+ggsave("fra/data/plots/topics/shuff_top_resonance.png")
+
+SF_q_low %>%
+  ggplot(aes(as.numeric(topic_nr), prob)) +
+  geom_bar(stat = "summary") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1)) +
+  theme_janco_bar() +
+  labs(title = "Average topic composition - shuffled",
+       subtitle = "shuffled speeches in the bottom decile of Resonance",
+       x = "LDA topic number",
+       y = "probability")
+
+ggsave("fra/data/plots/topics/shuff_bottom_resonance.png")
+```
+

@@ -1,0 +1,280 @@
+---
+title: "14_deu_paper_plot"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(scales)
+library(ggunchained)
+library(lmerTest)
+library(cowplot)
+library(lubridate)
+
+ntr_paths = list.files("deu/data/ntr_out", pattern = "*.csv", full.names = T)
+shuff_ntr_paths = list.files("deu/data/ntr_shuffled/", pattern = "*.csv", full.names = T)
+```
+
+```{r}
+normal_set = ntr_paths %>%
+  enframe() %>%
+  filter(str_detect(value, "W1|W11|W41|W96|W300|W900")) %>%
+  mutate(w = as.numeric(str_extract(value, "\\d+"))) %>%
+  select(path = value, w) %>%
+  arrange(w)
+
+norm01 = read_csv(normal_set$path[1])
+```
+
+
+# VARIABLE DISTRIBUTION
+```{r}
+ord_N = ggplot(norm01, aes(z_novelty)) +
+  geom_density() +
+  theme_classic() +
+  labs(title = "Novelty",
+       x = "z(Novelty)") +
+  scale_x_continuous(limits = c(-2.5, 10),
+                     breaks = seq(-2.5, 10, 2.5)) +
+  scale_y_continuous(limits = c(0, 0.7))
+  
+ord_T = ggplot(norm01, aes(z_transience)) +
+  geom_density() +
+  theme_classic() +
+  labs(title = "Transience",
+       x = "z(Transience)") +
+  scale_x_continuous(limits = c(-2.5, 10),
+                     breaks = seq(-2.5, 10, 2.5)) +
+  scale_y_continuous(limits = c(0, 0.7))
+  
+ord_R = ggplot(norm01, aes(z_resonance)) +
+    geom_density() +
+    theme_classic() +
+    labs(title = "Resonance",
+         x = "z(Resonance)") +
+  scale_y_continuous(limits = c(0, 0.6))
+
+ord_N
+ord_T
+ord_R
+```
+
+# BY COALITION
+## Resonance by time: coalition
+```{r}
+norm41 = read_csv(ntr_paths[str_detect(ntr_paths, "41")]) %>%
+  rename(rowname = doc_id)
+shuff41 = read_csv(shuff_ntr_paths[str_detect(shuff_ntr_paths, "41")]) %>%
+  rename(rowname = doc_id)
+
+c1_parties = c("BÜNDNIS 90/ DIE GRÜNEN", "BÜNDNIS 90/DIE GRÜNEN",
+               "Bündnis 90/Die Grünen", "GRUENE", "GRÜNE", "Grüne", "SPD")
+c2_parties = c("CDU ", "CDU", "CSU", "FDP")
+c3_parties = c("CDU ", "CDU", "CSU", "SPD")
+
+deu_part = read_csv("deu/data/02_deu_raw.csv") %>%
+  mutate(coalition_parties = case_when(year(date) >= 1998 & date < "2005-11-22" 
+                               ~ "SPD - Grünen",
+                      date >= "2005-11-22" & date < "2009-10-28" 
+                      ~ "CDU/CSU - FDP",
+                      date >= "2009-10-28" & year(date) <= 2019 
+                      ~ "CDU/CSU - SPD"),
+         coalition_labels = case_when(year(date) >= 1998 & date < "2005-11-22" 
+                               ~ "98-02 \nSPD - Grünen",
+                      date >= "2005-11-22" & date < "2009-10-28" 
+                      ~ "05-09 \nCDU/CSU - FDP",
+                      date >= "2009-10-28" & year(date) <= 2019 
+                      ~ "09-now \nCDU/CSU - SPD"),
+         coalition_labels = factor(coalition_labels, 
+                            levels=c('98-02 \nSPD - Grünen',
+                                     '05-09 \nCDU/CSU - FDP',
+                                     '09-now \nCDU/CSU - SPD'))
+         ) %>%
+    mutate(is_coallition = case_when(coalition_parties == "SPD - Grünen" & 
+                                       parliamentary_group %in% c("BÜNDNIS 90/DIE GRÜNEN",
+                                                                "SPD") |
+                                       party %in% c1_parties ~ 1,
+                                     
+                                     coalition_parties == "CDU/CSU - FDP" &
+                                       parliamentary_group %in% c("CDU/CSU",
+                                                                  "FDP",
+                                                                  "F.D.P.") |
+                                       party %in% c2_parties ~ 1,
+                                     
+                                     coalition_parties == "CDU/CSU - SPD" &
+                                       parliamentary_group %in% c("CDU/CSU",
+                                                                "SPD") |
+                                       party %in% c3_parties ~ 1,
+                                   TRUE ~ 0),
+           is_coallition_label = ifelse(is_coallition == 1, 
+                                        "Government MPs", "Opposition MPs")
+         )
+
+D_41 = left_join(norm41, deu_part, by = "rowname") 
+D_41S = left_join(shuff41, deu_part, by = "rowname")
+
+D_41 %>%
+  filter(parliamentary_group %in% party_oi) %>%
+  ggplot(aes(x = date, 
+             y = z_resonance, 
+             color = parliamentary_group)) +
+  #geom_jitter(alpha = 0.1) +
+  geom_vline(aes(xintercept = as.Date("2005-11-21"))) +
+  geom_vline(aes(xintercept = as.Date("2009-10-28"))) +
+  geom_smooth() +
+  theme_bw()
+```
+
+##facet wrap is coallition
+```{r}
+table(D_41$parliamentary_group)
+
+D_41 %>%
+  filter(role != "presidency") %>%
+  filter(coalition_labels != "NA") %>%
+  ggplot(aes(z_novelty, z_transience)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000,10000),
+            labels = trans_format("log10", math_format(expr = 10^.x, format = force))) +
+  geom_abline(colour = "black", linetype = "dashed") +
+  facet_grid(is_coallition_label~coalition_labels) +
+  theme_janco_point() +
+  theme(legend.direction = "vertical", legend.position = "right",
+        plot.caption = element_text(hjust = 0.5),
+        text = element_text(size=15)) +
+  labs(x = "Novelty (z-scaled)\n", y = "Transience (z-scaled)", 
+         title = "Novelty vs. Transience by MP allegiance",
+         subtitle = "(government/oposition in different coalitions) \nat w = 41, presidential speeches removed",
+         caption = "Data source: Bundestag debates (1998-2019)",
+         fill = "speech\ncount")
+
+#ggsave("deu/data/plots/nt_breakdown_oposition.png")
+
+D_41 %>%
+  mutate(is_pres = case_when(role == "presidency" ~ "Presiding", 
+                             role == "mp" ~ "MPs")) %>%
+  filter(is_pres != "NA") %>%
+  filter(coalition_labels != "NA") %>%
+  ggplot(aes(z_novelty, z_transience)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000,10000),
+            labels = trans_format("log10", math_format(expr = 10^.x, format = force))) +
+  geom_abline(colour = "black", linetype = "dashed") +
+  facet_grid(is_pres~coalition_labels) +
+  theme_janco_point() +
+  theme(legend.direction = "vertical", legend.position = "right",
+        plot.caption = element_text(hjust = 0.5),
+        text = element_text(size=15)) +
+    labs(x = "Novelty (z-scaled)\n", y = "Transience (z-scaled)", 
+         title = "Novelty vs. Transience by MP function",
+         subtitle = "(presiding/regular MP) \nat w = 41, subset: presidential and non-ministerial speeches",
+         caption = "Data source: Bundestag debates (1998-2019)",
+         fill = "speech\ncount")
+```
+
+##shuffle coalitions
+```{r}
+D_41S %>%
+  ggplot(aes(z_novelty, z_transience, fill = is_coallition)) +
+  geom_bin2d(bins = 100) +
+  facet_grid(is_coallition~coalition)
+```
+
+# TESTS
+## Coalition
+```{r}
+# the rest is in deu-paper plto
+D_41 = D_41 %>%
+  mutate(coalition = case_when(year(date) >= 1998 & date < "2005-11-22" ~ "SPD - Grünen",
+                               date >= "2005-11-22" & date < "2009-10-28" ~ "CDU/CSU - FDP",
+                               date >= "2009-10-28" & year(date) <= 2019 ~ "CDU/CSU - SPD"))
+
+party_oi = c("BÜNDNIS 90/DIE GRÜNEN", "SPD")
+
+green_test = D_41 %>%
+  filter(coalition ==  "SPD - Grünen") %>%
+  mutate(is_coallition = ifelse(parliamentary_group %in% party_oi, 1, 0))
+
+green_test_S = D_41S %>%
+  filter(coalition ==  "SPD - Grünen") %>%
+  mutate(is_coallition = ifelse(parliamentary_group %in% party_oi, 1, 0))
+
+gr_lm = lmer(z_resonance ~ is_coallition + (1 | name), data = green_test, REML = FALSE)
+summary(gr_lm)
+
+green_test %>%
+  ggplot(aes(factor(is_coallition), z_resonance)) +
+  geom_violin()
+
+grS_lm = lmer(z_resonance ~ is_coallition + (1 | name), data = green_test_S, REML = FALSE)
+summary(grS_lm)
+
+green_test_S %>%
+  ggplot(aes(factor(is_coallition), z_resonance)) +
+  geom_violin()
+
+BIC(gr_lm)
+BIC(grS_lm)
+
+## new round
+cres = lmer(z_resonance ~ is_coallition + (1 | name) + 
+              (1 | parliamentary_group) + (1 | coalition), data = D_41, REML = FALSE)
+
+summary(cres)
+
+
+Scres = lmer(z_resonance ~ is_coallition + (1 | name) + 
+               (1 | parliamentary_group) + (1 | coalition), data = D_41S, REML = FALSE)
+summary(Scres)
+
+BIC(cres)
+BIC(Scres)
+```
+
+## Presidential vs. Regular MP
+```{r}
+pres = D_41 %>%
+  mutate(is_pres = ifelse(role == "presidency", "pres", "non"))
+
+pr_lm = lmer(z_resonance ~ is_pres + (1 | name), data = pres, REML = FALSE)
+summary(pr_lm)
+
+
+presS = D_41S %>%
+  mutate(is_pres = ifelse(role == "presidency", "pres", "non"))
+
+pr_lmS = lmer(z_resonance ~ is_pres + (1 | name), data = presS, REML = FALSE)
+summary(pr_lmS)
+
+```
+
+## Secretary vs. Regular MP
+```{r}
+funkce = D_41 %>%
+  group_by(position) %>%
+  summarise(n = n())
+
+com = D_41 %>%
+  mutate(committee = ifelse(str_detect(position, "Staatssekretär"), "member", "non"))
+
+co_lm = lmer(z_resonance ~ committee + (1 | name), data = com, REML = FALSE)
+summary(co_lm)
+
+com %>%
+  ggplot(aes(factor(committee), z_resonance)) +
+  geom_violin()
+
+
+comS = D_41S %>%
+  mutate(committee = ifelse(str_detect(position, "Staatssekretär"), "member", "non"))
+
+coS_lm = lmer(z_resonance ~ committee + (1 | name), data = comS, REML = FALSE)
+summary(coS_lm)
+
+comS %>%
+  ggplot(aes(factor(committee), z_resonance)) +
+  geom_violin()
+```
+

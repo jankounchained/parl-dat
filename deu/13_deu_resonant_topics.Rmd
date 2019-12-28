@@ -1,0 +1,256 @@
+---
+title: "13_deu_resonant_topics"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(rethinking)
+library(scales)
+library(ggwordcloud)
+library(Hmisc)
+library(ggunchained)
+
+ntr_paths = list.files("deu/data/ntr_out", pattern = "*.csv", full.names = T)
+shuff_ntr_paths = list.files("deu/data/ntr_shuffled/", pattern = "*.csv", full.names = T)
+```
+
+```{r}
+D41_score = read_csv(ntr_paths[str_detect(ntr_paths, "41")])
+
+D_LDA = read_csv("deu/data/deu_ntr_in.csv") %>%
+  gather(key = "topic",
+         value = "prob",
+         X1:X100) %>%
+  mutate(topic_nr = str_extract(topic, "\\d+"))
+```
+
+# subset of highly resonant speeches
+```{r}
+HPDI(D41_score$z_resonance, prob = 0.9)
+
+D41_hr = D41_score %>%
+  filter(z_resonance >= 1.741582)
+
+D41_lr = D41_score %>%
+  filter(z_resonance <= -1.437966)
+
+D_q_high = left_join(D41_hr, D_LDA, by = "doc_id")
+D_q_low = left_join(D41_lr, D_LDA, by = "doc_id")
+```
+
+Top resonant speeches are intenesly addressing some topic.
+Bottom resonant speeches don't belong to any topic, but X49 is overwhelmingly represented.
+```{r}
+D_q_high %>%
+  ggplot(aes(as.numeric(topic_nr), prob)) +
+  geom_bar(stat = "summary") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1)) +
+  theme_janco_bar() +
+  labs(title = "Average topic composition",
+       subtitle = "speeches in the top decile of Resonance",
+       x = "LDA topic number",
+       y = "probability")
+
+ggsave("deu/data/plots/topics/top_resonance.png")
+
+D_q_low %>%
+  ggplot(aes(as.numeric(topic_nr), prob)) +
+  geom_bar(stat = "summary") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1)) +
+  theme_janco_bar() +
+  labs(title = "Average topic composition",
+       subtitle = "speeches in the bottom decile of Resonance",
+       x = "LDA topic number",
+       y = "probability") +
+  scale_y_continuous(breaks = seq(0, 20, 5)) +
+  scale_x_continuous(breaks = seq(1, 100, 1))
+
+ggsave("deu/data/plots/topics/bottom_resonance.png")
+  
+```
+
+# What are those topics?
+```{r}
+topic_D = read_delim("deu/data/word_topic.model", delim = " ",
+                   col_names = F, skip = 11,
+                   col_types = cols()) %>%
+  rename(hash = X1)
+
+hash = read_csv("deu/data/deu_hash.csv")
+
+thr <- right_join(topic_D, hash, by = "hash")
+
+extract_topic_words <- function(column) {
+  
+  d <- thr %>%
+    select(prob = column, word) %>%
+    arrange(desc(prob)) %>%
+    head(10) %>%
+    mutate(topic = str_extract(column, "\\d+"),
+           topic = as.numeric(topic)) %>%
+    select(topic, word, prob)
+  
+  return(d)
+  
+}
+
+col <- enframe(colnames(thr)) %>%
+  filter(str_detect(value, "\\d+"))
+
+col <- col$value
+
+topic_words <- map_df(col, extract_topic_words)
+
+write_csv(topic_words, "deu/data/words_by_topic.csv")
+```
+
+# topic composition
+5, 38, 77 are terrible
+```{r}
+topic_words = read_csv("deu/data/words_by_topic.csv") %>%
+  mutate(word = str_remove(word, "\\..*"))
+
+set.seed(420)
+
+topic_words %>%
+  filter(topic == "5") %>%
+  ggplot(aes(label = word, size = prob / 2, color = factor(word))) +
+  geom_text_wordcloud() +
+  scale_size_area(max_size = 20) +
+  theme_minimal()
+```
+
+```{r}
+
+```
+
+# loop
+```{r}
+save_topic_wordclouds <- function(topic_number) {
+  
+  set.seed(420)
+  
+  topic_words %>%
+  filter(topic == as.character(topic_number)) %>%
+  ggplot(aes(label = word, size = prob / 2, color = factor(word))) +
+  geom_text_wordcloud() +
+  scale_size_area(max_size = 20) +
+  theme_minimal()
+  
+  ggsave(filename = paste0("T", topic_number, ".png"), path = "deu/data/plots/topics/")
+  
+}
+
+topic_nrs = seq(1, 100, 1)
+lapply(topic_nrs, save_topic_wordclouds)
+```
+
+
+# shuffled topic composition
+```{r}
+D41_shuff = read_csv(shuff_ntr_paths[str_detect(shuff_ntr_paths, "41")]) 
+
+HPDI(D41_shuff$z_resonance, prob = 0.9)
+
+SD41_hr = D41_shuff %>%
+  filter(z_resonance >= 1.672955)
+
+SD41_lr = D41_shuff %>%
+  filter(z_resonance <= -1.448609)
+
+SD_q_high = left_join(SD41_hr, D_LDA, by = "doc_id")
+SD_q_low = left_join(SD41_lr, D_LDA, by = "doc_id")
+```
+
+```{r}
+SD_q_high %>%
+  ggplot(aes(as.numeric(topic_nr), prob)) +
+  geom_bar(stat = "summary") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1)) +
+  theme_janco_bar() +
+  labs(title = "Average topic composition - shuffled",
+       subtitle = "shuffled speeches in the top decile of Resonance",
+       x = "LDA topic number",
+       y = "probability")
+
+ggsave("deu/data/plots/topics/shuff_top_resonance.png")
+
+SD_q_low %>%
+  ggplot(aes(as.numeric(topic_nr), prob)) +
+  geom_bar(stat = "summary") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", fun.args = list(mult = 1)) +
+  theme_janco_bar() +
+  labs(title = "Average topic composition - shuffled",
+       subtitle = "shuffled speeches in the bottom decile of Resonance",
+       x = "LDA topic number",
+       y = "probability")
+
+ggsave("deu/data/plots/topics/shuff_bottom_resonance.png")
+```
+
+# salient examples
+```{r}
+disaster = D_41 %>%
+  filter(z_resonance <= -3 & z_novelty >= 3) %>%
+  filter(nchar(text_c) <= 1500) %>%
+  mutate(nchar = nchar(text_c)) %>%
+  arrange(nchar)
+
+original = D_41 %>%
+  filter(z_resonance >= 4) %>% 
+  filter(role != "presidency") %>%
+  filter(nchar(text_c) <= 500000) %>%
+  mutate(nchar = nchar(text_c)) %>%
+  arrange(nchar)
+
+norm = D_41 %>%
+  filter(z_transience <= 0.1 & z_transience >= -0.1) %>%
+  filter(nchar(text_c) >= 200 & nchar(text_c) <= 800)
+  
+```
+
+salient plot
+```{r}
+plot_low = D_41 %>%
+  filter(rowname == 132298)
+
+plot_norm = D_41 %>%
+  filter(rowname == 572)
+
+plot_mistake = D_41 %>%
+  filter(rowname == 54224)
+
+plot_high = D_41 %>%
+  filter(rowname == 166021)
+
+D_41 %>%
+  ggplot(aes(z_novelty, z_transience)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", 
+                       breaks = c(1,10,100,1000,10000),
+                       labels = trans_format("log10", 
+                                             math_format(expr = 10^.x, format = force))) +
+  geom_abline(colour = "black", linetype = "dashed") +
+  geom_point(data=plot_high, colour="green3", shape = 15, size = 5) +
+  geom_point(data=plot_norm, colour="gray60", shape = 15, size = 5) +
+  geom_point(data=plot_low, colour="red3", shape = 15, size = 5) +
+  geom_point(data=plot_mistake, colour="black", shape = 15, size = 5) +
+  theme_janco_point() +
+    labs(x = "Novelty (z-scaled)\n", y = "Transience (z-scaled)", 
+       title = "Position of salient speeches",
+       fill = NULL,
+       color = "aha") +
+  coord_fixed() +
+  theme(legend.direction = "vertical", legend.position = "right",
+        plot.caption = element_text(hjust = 0.5)
+        #, text = element_text(size=15)
+        ) +
+  guides(fill=F)
+
+ggsave("deu/data/plots/salient.png")
+  
+```
+

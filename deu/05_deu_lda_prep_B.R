@@ -15,7 +15,7 @@ out <- count(unn_hash, rowname, word) %>%
 
 
 out %>%
-  distinct(hash, lemma) %>%
+  distinct(hash, word) %>%
   arrange(hash) %>%
   write_csv("deu/data/deu_hash.csv")
 

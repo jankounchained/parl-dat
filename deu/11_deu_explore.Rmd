@@ -11,19 +11,20 @@ library(scales)
 library(ggunchained)
 library(lmerTest)
 library(cowplot)
+library(rethinking)
 ```
 
 FILE PATHS
 ```{r}
 ntr_paths = list.files("deu/data/ntr_out", pattern = "*.csv", full.names = T)
-shuff_ntr_paths = list.files("fra/data/ntr_shuffled/", pattern = "*.csv", full.names = T)
+shuff_ntr_paths = list.files("deu/data/ntr_shuffled/", pattern = "*.csv", full.names = T)
 ```
 
 
 PARTICULAR DATASET W41
 ```{r}
-norm41 = read_csv(ntr_paths[8])
-shuff41 = read_csv(shuff_ntr_paths[8])
+norm41 = read_csv(ntr_paths[str_detect(ntr_paths, "41")])
+shuff41 = read_csv(shuff_ntr_paths[str_detect(shuff_ntr_paths, "41")])
 ```
 
 
@@ -106,7 +107,8 @@ distribution_plots <- function(w, iso) {
   
 }
 
-w_range = as.character(seq(1, 100, 5))
+#w_range = as.character(seq(1, 100, 5))
+w_range = c(300, 900)
 
 lapply(w_range,
        distribution_plots,
@@ -228,5 +230,71 @@ export_shuff_plots <- function(path) {
 
 lapply(ntr_paths, export_plots)
 lapply(shuff_ntr_paths, export_shuff_plots)
+```
+
+
+# delta R
+```{r}
+D_41 %>%
+  ggplot(aes(z_novelty, delta_R)) +
+   geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000,10000),
+                labels = trans_format("log10", math_format(expr = 10^.x, format = force)))
+
+D_41S %>%
+  ggplot(aes(z_novelty, delta_R)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000,10000),
+                labels = trans_format("log10", math_format(expr = 10^.x, format = force)))
+```
+
+# TESTS
+## DEU vs. FRA
+```{r}
+D_41 = D_41 %>%
+  mutate(nation = "Germany")
+
+F_41 = read_csv("fra/data/ntr_out/W41__from_matrix.csv") %>%
+  mutate(nation = "France")
+
+FD = bind_rows(D_41, F_41)
+
+big = lmer(z_resonance ~ 1 + nation + (1 + novelty | nation), 
+           data = FD,
+           REML = FALSE)
+
+summary(big)
+
+```
+
+## SHUFF vs. ORD
+```{r}
+de_ord = lmer(z_resonance ~ z_novelty + (1 | name), data = D_41, REML = FALSE)
+de_shuff = lmer(z_resonance ~ z_novelty + (1 | name), data = D_41S, REML = FALSE)
+
+summary(de_ord)
+summary(de_shuff)
+
+confint(de_ord)
+confint(de_shuff)
+
+BIC(de_ord)
+BIC(de_shuff)
+```
+
+```{r}
+F_41S = read_csv("fra/data/ntr_shuffled/W41__ntr_shuf.csv")
+
+fr_ord = lmer(z_resonance ~ z_novelty + (1 | name), data = F_41, REML = FALSE)
+fr_shuff = lmer(z_resonance ~ z_novelty + (1 | name), data = F_41S, REML = FALSE)
+
+summary(fr_ord)
+summary(fr_shuff)
+
+confint(fr_ord)
+confint(fr_shuff)
+
+BIC(fr_ord)
+BIC(fr_shuff)
 ```
 

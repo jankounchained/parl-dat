@@ -99,7 +99,7 @@ calculate_ntr <- function(w) {
 # run
 ####
 
-timescales <- seq(1, 100, 5)
+timescales <- c(300, 900)
 
 plan(multiprocess)
 future_lapply(timescales, FUN = calculate_ntr, 

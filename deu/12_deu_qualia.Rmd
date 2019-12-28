@@ -1,0 +1,162 @@
+---
+title: "12_deu_qualia"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(scales)
+library(groupdata2)
+
+ntr_paths = list.files("deu/data/ntr_out", pattern = "*.csv", full.names = T)
+shuff_ntr_paths = list.files("deu/data/ntr_shuffled/", pattern = "*.csv", full.names = T)
+```
+
+```{r}
+deu_full = read_csv("deu/data/02_deu_s.csv")
+
+norm41 = read_csv(ntr_paths[str_detect(ntr_paths, "41")]) %>%
+  rename(rowname = doc_id)
+
+shuff41 = read_csv(shuff_ntr_paths[str_detect(shuff_ntr_paths, "41")]) %>%
+  rename(rowname = doc_id)
+
+D_41 = left_join(norm41, deu_full, by = "rowname")
+D_41S = left_join(shuff41, deu_full, by = "rowname")
+```
+
+```{r}
+deu_part = read_csv("deu/data/02_deu_raw.csv")
+
+D_41 = left_join(norm41, deu_part, by = "rowname")
+D_41S = left_join(shuff41, deu_part, by = "rowname")
+```
+
+# party
+Party tags are a bit of a mess
+But seems like there are some periods of extreme novelty and transience.
+Big lump of standard speeches - not following the identity line: 
+medium novelty, low transience
+```{r}
+D_41 %>%
+ggplot(aes(z_novelty, z_transience)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000,10000),
+                       labels = trans_format("log10", 
+                                             math_format(expr = 10^.x, format = force))) +
+  facet_wrap(~party) +
+  coord_fixed()
+```
+
+# position
+this is a mess, there are too many positions
+```{r}
+D_41 %>%
+ggplot(aes(z_novelty, z_transience)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000,10000),
+                       labels = trans_format("log10", 
+                                             math_format(expr = 10^.x, format = force))) +
+  facet_wrap(~position) +
+  coord_fixed()
+```
+
+# period
+Pattern is mostly the same across periods
+```{r}
+D_41 %>%
+ggplot(aes(z_novelty, z_transience)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000,10000),
+                       labels = trans_format("log10", 
+                                             math_format(expr = 10^.x, format = force))) +
+  facet_wrap(~period) +
+  coord_fixed()
+```
+
+# resonance ~ time
+the same 
+```{r}
+D_41 %>%
+  ggplot(aes(date, z_resonance)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000,10000),
+                       labels = trans_format("log10", 
+                                             math_format(expr = 10^.x, format = force)))
+```
+
+# resonance ~ time by PARTY
+very interesting!
+```{r}
+D_41 %>%
+  ggplot(aes(date, z_resonance, color = parliamentary_group)) +
+  geom_smooth()
+
+D_41 %>%
+  ggplot(aes(x = lubridate::year(D_41$date), z_resonance, fill = parliamentary_group)) +
+  geom_bar(stat = "summary")
+
+table(D_41$parliamentary_group)
+party_oi = c("BÜNDNIS 90/DIE GRÜNEN", "SPD")
+
+D_41S %>%
+  filter(parliamentary_group %in% party_oi) %>%
+  ggplot(aes(x = lubridate::year(date), 
+             y = z_resonance, 
+             fill = parliamentary_group)) +
+  geom_smooth()
+
+D_41S %>%
+  ggplot(aes(date, z_resonance, color = parliamentary_group)) +
+  geom_smooth()
+```
+
+# length of debates by time of day
+```{r}
+by_day <- group(deu_part, n = 'auto', 
+                method = 'l_starts',
+                starts_col = 'date', 
+                col_name = 'rowname.day') %>%
+  mutate(text_nchar = nchar(text_c))
+
+by_day %>%
+  ggplot(aes(x = rowname.day, y = text_nchar, group = date)) +
+  geom_density(stat = "summary")
+
+by_day %>%
+  ggplot(aes(x = rowname.day, y = text_nchar, group = date)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000),
+                         labels = trans_format("log10", 
+                          math_format(expr = 10^.x, format = force)))
+
+sp_by_day = by_day %>%
+  filter(!is.na(date)) %>%
+  filter(role != "presidency") %>%
+  group_by(date) %>%
+  summarise(n = n())
+```
+
+# german novelty gate: same speeches?
+```{r}
+lumpn = D_41 %>%
+  filter(z_transience >= 2 & z_novelty >= 2)
+
+lumps = D_41S %>%
+  filter(z_transience >= 2 & z_novelty >= 2)
+
+lumpdiff = anti_join(lumpn, lumps, by = "rowname")
+```
+
+```{r}
+D_41 %>%
+  ggplot(aes(z_novelty, z_transience)) +
+  geom_bin2d(bins = 100) +
+  scale_fill_viridis_c(trans = "log", breaks = c(1,10,100,1000,10000),
+                       labels = trans_format("log10", 
+                                             math_format(expr = 10^.x, format = force))) +
+  coord_fixed()
+```
+
