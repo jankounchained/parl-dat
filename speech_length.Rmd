@@ -1,0 +1,27 @@
+---
+title: "spl"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+```{r}
+ntr_paths = list.files("deu/data/ntr_out", pattern = "*.csv", full.names = T)
+
+norm41 = read_csv(ntr_paths[str_detect(ntr_paths, "41")]) %>%
+  rename(rowname = doc_id)
+
+meta_data = read_csv("deu/data/02_deu_raw.csv")
+
+D41 = left_join(norm41, meta_data, by = "rowname")
+rm(norm41, meta_data)
+```
+
+```{r}
+
+```
+
